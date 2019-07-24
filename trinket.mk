@@ -1,7 +1,7 @@
 ALLOW_MISSING_DEPENDENCIES=true
 # Default A/B configuration.
 ENABLE_AB ?= true
-
+BOARD_DYNAMIC_PARTITION_ENABLE ?= true
 # For QSSI builds, we skip building the system image. Instead we build the
 # "non-system" images (that we support).
 PRODUCT_BUILD_SYSTEM_IMAGE := false
@@ -25,11 +25,26 @@ TARGET_SKIP_OTA_PACKAGE := true
 # Enable AVB 2.0
 BOARD_AVB_ENABLE := true
 
+ifneq ($(strip $(BOARD_DYNAMIC_PARTITION_ENABLE)),true)
 # Enable chain partition for system, to facilitate system-only OTA in Treble.
 BOARD_AVB_SYSTEM_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
 BOARD_AVB_SYSTEM_ALGORITHM := SHA256_RSA2048
 BOARD_AVB_SYSTEM_ROLLBACK_INDEX := 0
 BOARD_AVB_SYSTEM_ROLLBACK_INDEX_LOCATION := 2
+else
+PRODUCT_USE_DYNAMIC_PARTITIONS := true
+PRODUCT_PACKAGES += fastbootd
+ifeq ($(ENABLE_AB), true)
+PRODUCT_COPY_FILES += $(LOCAL_PATH)/fstab_AB_dynamic_partition.qti:$(TARGET_COPY_OUT_RAMDISK)/fstab.qcom
+else
+PRODUCT_COPY_FILES += $(LOCAL_PATH)/fstab_non_AB_dynamic_partition.qti:$(TARGET_COPY_OUT_RAMDISK)/fstab.qcom
+endif
+BOARD_AVB_VBMETA_SYSTEM := system
+BOARD_AVB_VBMETA_SYSTEM_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
+BOARD_AVB_VBMETA_SYSTEM_ALGORITHM := SHA256_RSA2048
+BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX := $(PLATFORM_SECURITY_PATCH_TIMESTAMP)
+BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX_LOCATION := 2
+endif
 
 #target name, shall be used in all makefiles
 TRINKET = trinket
@@ -143,16 +158,13 @@ PRODUCT_PACKAGES += \
 endif
 
 DEVICE_MANIFEST_FILE := device/qcom/$(TRINKET)/manifest.xml
+ifeq ($(ENABLE_AB), true)
+DEVICE_MANIFEST_FILE += device/qcom/$(TRINKET)/manifest_ab.xml
+endif
 DEVICE_MATRIX_FILE := device/qcom/common/compatibility_matrix.xml
 DEVICE_FRAMEWORK_MANIFEST_FILE := device/qcom/$(TRINKET)/framework_manifest.xml
 DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE += \
     vendor/qcom/opensource/core-utils/vendor_framework_compatibility_matrix.xml
-
-TARGET_USES_NQ_NFC := true
-ifeq ($(TARGET_USES_NQ_NFC),true)
-PRODUCT_COPY_FILES += \
-    vendor/nxp/opensource/commonsys/external/libnfc-nci/halimpl/libnfc-nci.conf:$(TARGET_COPY_OUT_VENDOR)/etc/libnfc-nci.conf
-endif
 
 #Healthd packages
 PRODUCT_PACKAGES += \
@@ -177,10 +189,6 @@ PRODUCT_HOST_PACKAGES += \
     brillo_update_payload \
     configstore_xmlparser
 
-# FBE support
-PRODUCT_COPY_FILES += \
-    device/qcom/$(TRINKET)/init.qti.qseecomd.sh:$(TARGET_COPY_OUT_VENDOR)/bin/init.qti.qseecomd.sh
-
 # MSM IRQ Balancer configuration file
 PRODUCT_COPY_FILES += device/qcom/$(TRINKET)/msm_irqbalance.conf:$(TARGET_COPY_OUT_VENDOR)/etc/msm_irqbalance.conf
 
@@ -204,7 +212,7 @@ PRODUCT_PACKAGES += \
 
 # MIDI feature
 PRODUCT_COPY_FILES += \
-    frameworks/native/data/etc/android.software.midi.xml:system/etc/permissions/android.software.midi.xml
+    frameworks/native/data/etc/android.software.midi.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.midi.xml
 
 #servicetracker HAL
 PRODUCT_PACKAGES += \
@@ -266,12 +274,6 @@ PRODUCT_PROPERTY_OVERRIDES += ro.vendor.iocgrp.config=1
 #Enable full treble flag
 PRODUCT_FULL_TREBLE_OVERRIDE := true
 PRODUCT_VENDOR_MOVE_ENABLED := true
-
-#Enable QTI KEYMASTER and GATEKEEPER HIDLs
-KMGK_USE_QTI_SERVICE := true
-
-#Enable KEYMASTER 4.0
-ENABLE_KM_4_0 := true
 
 # Enable flag to support slow devices
 TARGET_PRESIL_SLOW_BOARD := true
