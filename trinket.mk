@@ -1,7 +1,34 @@
 ALLOW_MISSING_DEPENDENCIES=true
 # Default A/B configuration.
 ENABLE_AB ?= true
-BOARD_DYNAMIC_PARTITION_ENABLE ?= true
+SHIPPING_API_LEVEL ?= 29
+# Enable Dynamic partitions only for Q new launch devices.
+ifeq ($(SHIPPING_API_LEVEL),29)
+  BOARD_DYNAMIC_PARTITION_ENABLE := true
+  PRODUCT_SHIPPING_API_LEVEL := 29
+  # f2fs utilities
+  PRODUCT_PACKAGES += \
+   sg_write_buffer \
+   f2fs_io \
+   check_f2fs
+
+  # Userdata checkpoint
+  PRODUCT_PACKAGES += \
+   checkpoint_gc
+
+  ifeq ($(ENABLE_AB), true)
+    AB_OTA_POSTINSTALL_CONFIG += \
+    RUN_POSTINSTALL_vendor=true \
+    POSTINSTALL_PATH_vendor=bin/checkpoint_gc \
+    FILESYSTEM_TYPE_vendor=ext4 \
+    POSTINSTALL_OPTIONAL_vendor=true
+  endif
+else ifeq ($(SHIPPING_API_LEVEL),28)
+  BOARD_DYNAMIC_PARTITION_ENABLE := false
+  $(call inherit-product, build/make/target/product/product_launched_with_p.mk)
+endif
+
+
 # For QSSI builds, we skip building the system image. Instead we build the
 # "non-system" images (that we support).
 PRODUCT_BUILD_SYSTEM_IMAGE := false
@@ -45,6 +72,9 @@ BOARD_AVB_VBMETA_SYSTEM_ALGORITHM := SHA256_RSA2048
 BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX := $(PLATFORM_SECURITY_PATCH_TIMESTAMP)
 BOARD_AVB_VBMETA_SYSTEM_ROLLBACK_INDEX_LOCATION := 2
 endif
+
+#privapp-permissions whitelisting
+PRODUCT_PROPERTY_OVERRIDES += ro.control_privapp_permissions=enforce
 
 #target name, shall be used in all makefiles
 TRINKET = trinket
@@ -165,6 +195,10 @@ DEVICE_MATRIX_FILE := device/qcom/common/compatibility_matrix.xml
 DEVICE_FRAMEWORK_MANIFEST_FILE := device/qcom/$(TRINKET)/framework_manifest.xml
 DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE += \
     vendor/qcom/opensource/core-utils/vendor_framework_compatibility_matrix.xml
+
+# Telephony: Enable advanced network scanning
+PRODUCT_PROPERTY_OVERRIDES += \
+    persist.vendor.radio.enableadvancedscan=true
 
 #Healthd packages
 PRODUCT_PACKAGES += \
@@ -308,7 +342,6 @@ PRODUCT_PACKAGES += android.hardware.thermal@1.0-impl \
 PRODUCT_PACKAGES += cameraconfig.txt
 
 TARGET_USES_MKE2FS := true
-$(call inherit-product, build/make/target/product/product_launched_with_p.mk)
 
 #Property to enable memperfd
 PRODUCT_PROPERTY_OVERRIDES += \
