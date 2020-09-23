@@ -31,10 +31,10 @@ endif
 
 # For QSSI builds, we skip building the system image. Instead we build the
 # "non-system" images (that we support).
-PRODUCT_BUILD_SYSTEM_IMAGE := false
+PRODUCT_BUILD_SYSTEM_IMAGE := true
 PRODUCT_BUILD_SYSTEM_OTHER_IMAGE := false
 PRODUCT_BUILD_VENDOR_IMAGE := true
-PRODUCT_BUILD_PRODUCT_IMAGE := false
+PRODUCT_BUILD_PRODUCT_IMAGE := true
 PRODUCT_BUILD_PRODUCT_SERVICES_IMAGE := false
 PRODUCT_BUILD_ODM_IMAGE := false
 ifeq ($(ENABLE_AB), true)
